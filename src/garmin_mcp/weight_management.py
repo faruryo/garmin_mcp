@@ -2,8 +2,6 @@
 Weight management functions for Garmin Connect MCP Server
 """
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -132,84 +130,8 @@ def register_tools(app):
         except Exception as e:
             return f"Error retrieving daily weight measurements: {str(e)}"
 
-    @app.tool()
-    async def delete_weigh_ins(date: str, delete_all: bool = True) -> str:
-        """Delete weight measurements for a specific date
-
-        Args:
-            date: Date in YYYY-MM-DD format
-            delete_all: Whether to delete all measurements for the day
-        """
-        try:
-            # API returns count of deleted entries
-            deleted_count = garmin_client.delete_weigh_ins(date, delete_all=delete_all)
-            return json.dumps({
-                "status": "success",
-                "date": date,
-                "deleted_count": deleted_count if isinstance(deleted_count, int) else 0,
-                "message": f"Weight measurements deleted for {date}"
-            }, indent=2)
-        except Exception as e:
-            return f"Error deleting weight measurements: {str(e)}"
-
-    @app.tool()
-    async def add_weigh_in(weight: float, unit_key: str = "kg") -> str:
-        """Add a new weight measurement
-
-        Args:
-            weight: Weight value
-            unit_key: Unit of weight ('kg' or 'lb')
-        """
-        try:
-            result = garmin_client.add_weigh_in(weight=weight, unitKey=unit_key)
-            # Return structured response
-            return json.dumps({
-                "status": "success",
-                "weight": weight,
-                "unit": unit_key,
-                "message": "Weight measurement added successfully"
-            }, indent=2)
-        except Exception as e:
-            return f"Error adding weight measurement: {str(e)}"
-
-    @app.tool()
-    async def add_weigh_in_with_timestamps(
-        weight: float,
-        unit_key: str = "kg",
-        date_timestamp: str = None,
-        gmt_timestamp: str = None
-    ) -> str:
-        """Add a new weight measurement with specific timestamps
-
-        Args:
-            weight: Weight value
-            unit_key: Unit of weight ('kg' or 'lb')
-            date_timestamp: Local timestamp in format YYYY-MM-DDThh:mm:ss
-            gmt_timestamp: GMT timestamp in format YYYY-MM-DDThh:mm:ss
-        """
-        try:
-            if date_timestamp is None or gmt_timestamp is None:
-                # Generate timestamps if not provided
-                now = datetime.datetime.now()
-                date_timestamp = now.strftime('%Y-%m-%dT%H:%M:%S')
-                gmt_timestamp = now.astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
-
-            result = garmin_client.add_weigh_in_with_timestamps(
-                weight=weight,
-                unitKey=unit_key,
-                dateTimestamp=date_timestamp,
-                gmtTimestamp=gmt_timestamp
-            )
-            # Return structured response
-            return json.dumps({
-                "status": "success",
-                "weight": weight,
-                "unit": unit_key,
-                "timestamp_local": date_timestamp,
-                "timestamp_gmt": gmt_timestamp,
-                "message": "Weight measurement added successfully"
-            }, indent=2)
-        except Exception as e:
-            return f"Error adding weight measurement with timestamps: {str(e)}"
+    # --- Write tools disabled for read-only mode ---
+    # delete_weigh_ins, add_weigh_in, add_weigh_in_with_timestamps have been removed
+    # to prevent unintended data modification via prompt injection.
 
     return app

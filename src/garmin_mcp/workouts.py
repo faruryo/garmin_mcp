@@ -2,8 +2,7 @@
 Workout-related functions for Garmin Connect MCP Server
 """
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Union
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -13,35 +12,6 @@ def configure(client):
     """Configure the module with the Garmin client instance"""
     global garmin_client
     garmin_client = client
-
-
-def _fix_hr_zone_step(step: dict) -> None:
-    """Fix a common mistake where HR zone targets use targetValueOne instead of zoneNumber.
-
-    When targetType is heart.rate.zone, Garmin expects zoneNumber (1-5).
-    If targetValueOne is set to a small integer (1-5) and zoneNumber is missing,
-    this is almost certainly a zone number, not an absolute HR value.
-    """
-    target_type = step.get('targetType', {})
-    target_key = target_type.get('workoutTargetTypeKey', '')
-
-    if target_key == 'heart.rate.zone' and 'zoneNumber' not in step:
-        zone = step.get('targetValueOne')
-        if zone is not None and 1 <= zone <= 5:
-            step['zoneNumber'] = int(zone)
-            step.pop('targetValueOne', None)
-            step.pop('targetValueTwo', None)
-
-    # Recurse into nested steps (RepeatGroupDTO)
-    for nested in step.get('workoutSteps', []):
-        _fix_hr_zone_step(nested)
-
-
-def _fix_hr_zone_steps(workout_data: dict) -> None:
-    """Walk all workout steps and fix HR zone target mistakes."""
-    for segment in workout_data.get('workoutSegments', []):
-        for step in segment.get('workoutSteps', []):
-            _fix_hr_zone_step(step)
 
 
 def _curate_workout_summary(workout: dict) -> dict:
@@ -323,103 +293,9 @@ def register_tools(app):
         except Exception as e:
             return f"Error downloading workout: {str(e)}"
 
-    @app.tool()
-    async def upload_workout(workout_data: dict) -> str:
-        """Upload a workout from JSON data
-
-        Creates a new workout in Garmin Connect from structured workout data.
-
-        IMPORTANT: Step types must use Garmin's DTO format:
-        - Use "ExecutableStepDTO" for regular steps (warmup, interval, cooldown, recovery)
-        - Use "RepeatGroupDTO" for repeat/interval groups with numberOfIterations
-
-        IMPORTANT: For heart rate zone targets, use "zoneNumber" (1-5), NOT targetValueOne/targetValueTwo.
-        targetValueOne/targetValueTwo are only for absolute value ranges (e.g. pace in m/s, power in watts).
-
-        **Available Templates:**
-        Instead of building workout JSON from scratch, you can use these MCP resources as starting points:
-        - workout://templates/simple-run - Basic warmup/run/cooldown structure
-        - workout://templates/interval-running - Interval training with repeat groups
-        - workout://templates/tempo-run - Tempo run with heart rate zone targets
-        - workout://templates/strength-circuit - Strength training circuit structure
-        - workout://reference/structure - Complete JSON structure reference with all fields
-
-        Access these resources using your MCP client's resource reading capability, modify the template
-        as needed, and pass the resulting JSON as the workout_data parameter.
-
-        Example workout structure with HR zone target:
-        {
-            "workoutName": "My Workout",
-            "sportType": {"sportTypeId": 1, "sportTypeKey": "running"},
-            "workoutSegments": [{
-                "segmentOrder": 1,
-                "sportType": {"sportTypeId": 1, "sportTypeKey": "running"},
-                "workoutSteps": [{
-                    "type": "ExecutableStepDTO",
-                    "stepOrder": 1,
-                    "stepType": {"stepTypeId": 3, "stepTypeKey": "interval"},
-                    "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time"},
-                    "endConditionValue": 1200.0,
-                    "targetType": {"workoutTargetTypeId": 4, "workoutTargetTypeKey": "heart.rate.zone"},
-                    "zoneNumber": 3
-                }]
-            }]
-        }
-
-        Args:
-            workout_data: Dictionary containing workout structure (name, sport type, segments, etc.)
-        """
-        try:
-            # Fix common mistake: HR zone targets using targetValueOne instead of zoneNumber
-            _fix_hr_zone_steps(workout_data)
-
-            # Pass dict directly - library handles conversion
-            result = garmin_client.upload_workout(workout_data)
-
-            # Curate the response
-            if isinstance(result, dict):
-                curated = {
-                    "status": "success",
-                    "workout_id": result.get('workoutId'),
-                    "name": result.get('workoutName'),
-                    "message": "Workout uploaded successfully"
-                }
-                # Remove None values
-                curated = {k: v for k, v in curated.items() if v is not None}
-                return json.dumps(curated, indent=2)
-
-            return json.dumps(result, indent=2)
-        except Exception as e:
-            return f"Error uploading workout: {str(e)}"
-
-    @app.tool()
-    async def delete_workout(workout_id: int) -> str:
-        """Delete a workout from Garmin Connect
-
-        Permanently removes a workout from your Garmin Connect workout library.
-
-        Args:
-            workout_id: ID of the workout to delete (get IDs from get_workouts)
-        """
-        try:
-            url = f"{garmin_client.garmin_workouts}/workout/{workout_id}"
-            response = garmin_client.garth.delete("connectapi", url, api=True)
-
-            if response.status_code == 204 or response.status_code == 200:
-                return json.dumps({
-                    "status": "success",
-                    "workout_id": workout_id,
-                    "message": f"Workout {workout_id} deleted successfully"
-                }, indent=2)
-            else:
-                return json.dumps({
-                    "status": "failed",
-                    "workout_id": workout_id,
-                    "http_status": response.status_code,
-                    "message": f"Failed to delete workout: HTTP {response.status_code}"
-                }, indent=2)
-        except Exception as e:
-            return f"Error deleting workout: {str(e)}"
+    # --- Write tools disabled for read-only mode ---
+    # upload_workout, delete_workout, schedule_workout have been removed
+    # to prevent unintended data modification via prompt injection.
 
     @app.tool()
     async def get_scheduled_workouts(start_date: str, end_date: str) -> str:
@@ -517,38 +393,5 @@ def register_tools(app):
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving training plan workouts: {str(e)}"
-
-    @app.tool()
-    async def schedule_workout(workout_id: int, calendar_date: str) -> str:
-        """Schedule a workout to a specific calendar date
-
-        This adds an existing workout from your Garmin workout library
-        to your Garmin Connect calendar on the specified date.
-
-        Args:
-            workout_id: ID of the workout to schedule (get IDs from get_workouts)
-            calendar_date: Date to schedule the workout in YYYY-MM-DD format
-        """
-        try:
-            url = f"workout-service/schedule/{workout_id}"
-            response = garmin_client.garth.post("connectapi", url, json={"date": calendar_date})
-
-            if response.status_code == 200:
-                return json.dumps({
-                    "status": "success",
-                    "workout_id": workout_id,
-                    "scheduled_date": calendar_date,
-                    "message": f"Successfully scheduled workout {workout_id} for {calendar_date}"
-                }, indent=2)
-            else:
-                return json.dumps({
-                    "status": "failed",
-                    "workout_id": workout_id,
-                    "scheduled_date": calendar_date,
-                    "http_status": response.status_code,
-                    "message": f"Failed to schedule workout: HTTP {response.status_code}"
-                }, indent=2)
-        except Exception as e:
-            return f"Error scheduling workout: {str(e)}"
 
     return app

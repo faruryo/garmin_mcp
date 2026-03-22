@@ -3,8 +3,7 @@ Training and performance functions for Garmin Connect MCP Server
 """
 
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -655,17 +654,8 @@ def register_tools(app):
         except Exception as e:
             return f"Error retrieving lactate threshold data: {str(e)}"
 
-    @app.tool()
-    async def request_reload(date: str) -> str:
-        """Request reload of epoch data
-
-        Args:
-            date: Date in YYYY-MM-DD format
-        """
-        try:
-            result = garmin_client.request_reload(date)
-            return json.dumps(result, indent=2)
-        except Exception as e:
-            return f"Error requesting data reload: {str(e)}"
+    # --- Write tools disabled for read-only mode ---
+    # request_reload has been removed to prevent unintended data modification
+    # via prompt injection.
 
     return app

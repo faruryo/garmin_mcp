@@ -3,7 +3,6 @@ Gear management functions for Garmin Connect MCP Server
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -153,54 +152,8 @@ def register_tools(app):
         except Exception as e:
             return f"Error retrieving gear: {str(e)}"
 
-    @app.tool()
-    async def add_gear_to_activity(activity_id: int, gear_uuid: str) -> str:
-        """Associate gear with an activity
-
-        Links a specific piece of gear (like shoes, bike, etc.) to an activity.
-
-        Args:
-            activity_id: ID of the activity
-            gear_uuid: UUID of the gear to add (get from get_gear)
-        """
-        try:
-            garmin_client.add_gear_to_activity(activity_id, gear_uuid)
-
-            return json.dumps(
-                {
-                    "success": True,
-                    "activity_id": activity_id,
-                    "gear_uuid": gear_uuid,
-                    "message": "Gear successfully added to activity",
-                },
-                indent=2,
-            )
-        except Exception as e:
-            return f"Error adding gear to activity: {str(e)}"
-
-    @app.tool()
-    async def remove_gear_from_activity(activity_id: int, gear_uuid: str) -> str:
-        """Remove gear association from an activity
-
-        Unlinks a specific piece of gear from an activity.
-
-        Args:
-            activity_id: ID of the activity
-            gear_uuid: UUID of the gear to remove
-        """
-        try:
-            garmin_client.remove_gear_from_activity(activity_id, gear_uuid)
-
-            return json.dumps(
-                {
-                    "success": True,
-                    "activity_id": activity_id,
-                    "gear_uuid": gear_uuid,
-                    "message": "Gear successfully removed from activity",
-                },
-                indent=2,
-            )
-        except Exception as e:
-            return f"Error removing gear from activity: {str(e)}"
+    # --- Write tools disabled for read-only mode ---
+    # add_gear_to_activity, remove_gear_from_activity have been removed
+    # to prevent unintended data modification via prompt injection.
 
     return app

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits"
+  ],
+  "packageRules": [
+    {
+      "description": "Auto-merge patch and minor updates for non-major dependencies",
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Group all Python dependency updates",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "groupName": "python dependencies"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}

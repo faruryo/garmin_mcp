@@ -306,39 +306,6 @@ def register_tools(app):
             return f"Error retrieving body battery events: {str(e)}"
 
     @app.tool()
-    async def get_blood_pressure(start_date: str, end_date: str) -> str:
-        """Get blood pressure data
-
-        Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
-        """
-        try:
-            bp_data = garmin_client.get_blood_pressure(start_date, end_date)
-            if not bp_data:
-                return f"No blood pressure data found between {start_date} and {end_date}"
-
-            return json.dumps(bp_data, indent=2)
-        except Exception as e:
-            return f"Error retrieving blood pressure data: {str(e)}"
-
-    @app.tool()
-    async def get_floors(date: str) -> str:
-        """Get floors climbed data
-
-        Args:
-            date: Date in YYYY-MM-DD format
-        """
-        try:
-            floors_data = garmin_client.get_floors(date)
-            if not floors_data:
-                return f"No floors data found for {date}"
-
-            return json.dumps(floors_data, indent=2)
-        except Exception as e:
-            return f"Error retrieving floors data: {str(e)}"
-
-    @app.tool()
     async def get_rhr_day(date: str) -> str:
         """Get resting heart rate data
 
@@ -410,22 +377,6 @@ def register_tools(app):
             return json.dumps(summary, indent=2)
         except Exception as e:
             return f"Error retrieving heart rate summary: {str(e)}"
-
-    @app.tool()
-    async def get_hydration_data(date: str) -> str:
-        """Get hydration data
-
-        Args:
-            date: Date in YYYY-MM-DD format
-        """
-        try:
-            hydration_data = garmin_client.get_hydration_data(date)
-            if not hydration_data:
-                return f"No hydration data found for {date}"
-
-            return json.dumps(hydration_data, indent=2)
-        except Exception as e:
-            return f"Error retrieving hydration data: {str(e)}"
 
     @app.tool()
     async def get_sleep_data(date: str) -> str:
@@ -631,41 +582,6 @@ def register_tools(app):
             return json.dumps(summary, indent=2)
         except Exception as e:
             return f"Error retrieving respiration summary: {str(e)}"
-
-    @app.tool()
-    async def get_spo2_data(date: str) -> str:
-        """Get SpO2 (blood oxygen) data
-
-        Args:
-            date: Date in YYYY-MM-DD format
-        """
-        try:
-            spo2_data = garmin_client.get_spo2_data(date)
-            if not spo2_data:
-                return f"No SpO2 data found for {date}"
-
-            # Curate the response
-            summary = {
-                "date": spo2_data.get('calendarDate'),
-                "avg_spo2_percent": spo2_data.get('averageSpO2'),
-                "lowest_spo2_percent": spo2_data.get('lowestSpO2'),
-                "latest_spo2_percent": spo2_data.get('latestSpO2'),
-                "latest_reading_time": spo2_data.get('latestSpO2TimestampLocal'),
-                "last_7_days_avg_spo2": spo2_data.get('lastSevenDaysAvgSpO2'),
-                "avg_sleep_spo2_percent": spo2_data.get('avgSleepSpO2'),
-            }
-
-            # Include hourly averages if available
-            hourly = spo2_data.get('spO2HourlyAverages')
-            if hourly:
-                summary["hourly_averages"] = hourly
-
-            # Remove None values
-            summary = {k: v for k, v in summary.items() if v is not None}
-
-            return json.dumps(summary, indent=2)
-        except Exception as e:
-            return f"Error retrieving SpO2 data: {str(e)}"
 
     @app.tool()
     async def get_all_day_stress(date: str) -> str:
